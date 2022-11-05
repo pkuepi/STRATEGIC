@@ -1,0 +1,370 @@
+---
+title: "STRATEGIC"
+output: html_document
+---
+
+#################################################################
+#                                                               #
+#  Strategies to inTerrupt RAbies Transmission for the          #
+#  Elimination Goal by 2030 In China (STRATEGIC) study          #
+#                                                               #        
+#  plot                                                         #
+#  This file is used to generate the main Tables and Figures    #
+#  Modified from the WHO rabies modelling consortium study      #
+#  URL: https://github.com/katiehampson1978/rabies_PEP_access   #
+#  Ref.: The Lancet Infectious Diseases 2019; 19(1): 102-11.    #
+#                                                               #
+#################################################################
+
+
+```{r}
+rm(list=ls())
+options(scipen = 999)
+setwd("Path/STRATEGIC")
+source("R/8.plot_function.R")
+```
+
+
+```{r}
+library(tools)
+library(dplyr)
+library(ggplot2)
+library(scales)
+```
+
+
+```{r}
+###########################
+# 1-1.ICER tables prepare #
+###########################
+
+undisc_global <- read.csv("output/global_stats.csv", stringsAsFactors=FALSE)
+global_hor <- scenario_prep(undisc_global)[,c(1,2,5,11)]
+global_hor[,c(3:4)] <- round(global_hor[,c(3:4)],4)
+ICER_pre <- as.data.frame(matrix(0,8,4))
+rownames(ICER_pre) <- c("scenario 1","scenario 2","scenario 3a","scenario 3b","scenario 4a","scenario 4b","scenario 4c","scenario 4d")
+colnames(ICER_pre) <- c("death_2030","cost_2030","death_2035","cost_2035")
+for(i in 1:8){
+  ICER_pre[i,1] <- sum(global_hor$total_deaths[which(global_hor$scenario==i)][1:8])
+  ICER_pre[i,2] <- sum(global_hor$total_cost[which(global_hor$scenario==i)][1:8])
+  ICER_pre[i,3] <- sum(global_hor$total_deaths[which(global_hor$scenario==i)])
+  ICER_pre[i,4] <- sum(global_hor$total_cost[which(global_hor$scenario==i)])
+}
+
+ICER_pre_US <- ICER_pre
+ICER_pre_US$cost_2030 <- ICER_pre_US$cost_2030/6.8996
+ICER_pre_US$cost_2035 <- ICER_pre_US$cost_2035/6.8996
+
+###################
+# 1-2.ICER tables #
+###################
+
+ICER_main <- as.data.frame(matrix(0,7,6))
+rownames(ICER_main) <- c("scenario 2 v.s. 1","scenario 3a v.s. 1","scenario3b v.s. 1","scenario4a v.s. 1","scenario 4b v.s. 1","scenario 4c v.s. 1","scenario 4d v.s. 1")
+colnames(ICER_main) <- c("death_2030","cost_2030","ICER_2030","death_2035","cost_2035","ICER_2035")
+for(i in 2:8){
+  ICER_main[i-1,1] <- -(ICER_pre[i,1]-ICER_pre[1,1])
+  ICER_main[i-1,2] <- (ICER_pre[i,2]-ICER_pre[1,2])
+  ICER_main[i-1,3] <- ICER_main[i-1,2]/ICER_main[i-1,1]
+  ICER_main[i-1,4] <- -(ICER_pre[i,3]-ICER_pre[1,3])
+  ICER_main[i-1,5] <- (ICER_pre[i,4]-ICER_pre[1,4])
+  ICER_main[i-1,6] <- ICER_main[i-1,5]/ICER_main[i-1,4]
+}
+ICER_main <- format(signif(ICER_main, 12), nsmall=4, big.mark=",", trim=TRUE)
+
+ICER_main_US <- as.data.frame(matrix(0,7,6))
+rownames(ICER_main_US) <- c("scenario 2 v.s. 1","scenario 3a v.s. 1","scenario3b v.s. 1","scenario4a v.s. 1","scenario 4b v.s. 1","scenario 4c v.s. 1","scenario 4d v.s. 1")
+colnames(ICER_main_US) <- c("death_2030","cost_2030","ICER_2030","death_2035","cost_2035","ICER_2035")
+for(i in 2:8){
+  ICER_main_US[i-1,1] <- -(ICER_pre_US[i,1]-ICER_pre_US[1,1])
+  ICER_main_US[i-1,2] <- (ICER_pre_US[i,2]-ICER_pre_US[1,2])
+  ICER_main_US[i-1,3] <- ICER_main_US[i-1,2]/ICER_main_US[i-1,1]
+  ICER_main_US[i-1,4] <- -(ICER_pre_US[i,3]-ICER_pre_US[1,3])
+  ICER_main_US[i-1,5] <- (ICER_pre_US[i,4]-ICER_pre_US[1,4])
+  ICER_main_US[i-1,6] <- ICER_main_US[i-1,5]/ICER_main_US[i-1,4]
+}
+ICER_main_US <- format(signif(ICER_main_US, 12), nsmall=4, big.mark=",", trim=TRUE)
+write.csv(ICER_main_US,row.names = T, paste("figures and tables/ICER_scenario.csv"))
+```
+
+
+```{r} 
+#####################################
+# 2.projection data tables per year #
+#####################################
+
+undisc_global <- read.csv("output/global_stats.csv", stringsAsFactors=FALSE)
+global_hor <- scenario_prep(undisc_global)[,c(1:5)]
+# Reduce numbers to millions
+global_hor[,c(3:5)] <- round(global_hor[,c(3:5)],0)
+global <- as.data.frame(matrix(0,104,9))
+province <- c("Guangxi","Shaanxi","Hunan","Tianjin","Shandong","Guizhou")
+colnames(global) <- c("Year","Scenario","China",province)
+global[,1:2] <- global_hor[,1:2]
+global[,2] <- rep(c("scenario 1","scenario 2","scenario 3a","scenario 3b","scenario 4a","scenario 4b","scenario 4c","scenario 4d"),13)
+global[,3] <- paste0(global_hor$total_deaths, " (", global_hor$total_deaths_lci, ",", global_hor$total_deaths_uci, ")")
+
+for(i in 1:6){
+undisc_global <- read.csv("output/region_stats.csv", stringsAsFactors=FALSE)
+undisc_global <- undisc_global[undisc_global$region==province[i],]
+global_hor <- scenario_prep(undisc_global)[,c(1,3,4,5,6)]
+global_hor[,3:5] <- round(global_hor[,3:5],0)
+# Reduce numbers to millions
+global[,i+3] <- paste0(global_hor$total_deaths, " (", global_hor$total_deaths_lci, ",", global_hor$total_deaths_uci, ")")
+}
+write.csv(global,row.names = F, paste("figures and tables/Tab2_model_year_scenario_all.csv"))
+```
+
+
+```{r} 
+###########################
+# 3.results summary table #
+###########################
+
+undisc_global <- read.csv("output/global_stats_horizon.csv", stringsAsFactors=FALSE)
+undisc_global[,c(8:10,29:34)] <- undisc_global[,c(8:10,29:34)]/6.8996
+global_hor <- scenario_prep(undisc_global)
+global_hor[,c(5:10)] <- global_hor[,c(5:10)]/1000000
+# Round all numbers to 2 dp
+global_hor[,-c(1)] <- format(signif(global_hor[,-c(1)], 12), nsmall=4, big.mark=",", trim=TRUE)
+# Build dataframe
+global_sum_df <- data.frame("Scenario"=global_hor$scenario,
+                            "Rabies deaths"=paste0(global_hor$total_deaths, " (", global_hor$total_deaths_lci, "-", global_hor$total_deaths_uci, ")"),
+                            "Rabies deaths averted"=paste0(global_hor$total_deaths_averted, " (", global_hor$total_deaths_averted_lci, "-", global_hor$total_deaths_averted_uci, ")"),
+                            "DALYs"=paste0(global_hor$total_YLL, " (", global_hor$total_YLL_lci, "-", global_hor$total_YLL_uci, ")"),
+                            "DALYs averted"=paste0(global_hor$total_YLL_averted, " (", global_hor$total_YLL_averted_lci, "-", global_hor$total_YLL_averted_uci, ")"),
+                            "Vaccine vials used"=paste0(global_hor$total_vials, " (", global_hor$total_vials_lci, "-", global_hor$total_vials_uci, ")"),
+                            "RIG vials used"=paste0(global_hor$RIG, " (", global_hor$RIG_lci, "-", global_hor$RIG_uci, ")"),
+                            "PEP courses initiated"=paste0(global_hor$vaccinated, " (", global_hor$vaccinated_lci, "-", global_hor$vaccinated_uci, ")"),
+                            "PEP courses completed"=paste0(global_hor$fully_vaccinated, " (", global_hor$fully_vaccinated_lci, "-", global_hor$fully_vaccinated_uci, ")"),
+                            "Total Cost"=paste0(global_hor$total_cost, " (", global_hor$total_cost_lci, "-", global_hor$total_cost_uci, ")"))
+colnames(global_sum_df) <- c("Scenario", "Rabies deaths", "Rabies deaths averted", "DALYs",
+                             "DALYs averted", "Vaccine vials used", "RIG vials used",
+                             "PEP courses initiated", "PEP courses completed", "Total Cost")
+
+final_global_sum_df <- as.data.frame(t(global_sum_df))
+colnames(final_global_sum_df) <- global_sum_df$Scenario
+
+# Order columns by colname
+final_global_sum_df <- final_global_sum_df[c("1", "2", "3", "4", "5", "6", "7", "8")]
+final_global_sum_df <- final_global_sum_df[-1,]
+
+colnames(final_global_sum_df) <- c("Scenario 1", "Scenario 2", "Scenario 3a", "Scenario 3b", "Scenario 4a", "Scenario 4b", "Scenario 4c", "Scenario 4d")
+# Create main table for manuscript
+model_summary_df <- final_global_sum_df
+
+# Save to .csv
+write.csv(model_summary_df, "figures and tables/Tab1_model_summary_scenario.csv")
+```
+
+
+```{r} 
+##############################
+# 4.univariate analysis plot #
+##############################
+
+univar <- read.csv("output/un_global_stats_horizon.csv")
+univar[,c(9:11,30:35)] <- univar[,c(9:11,30:35)]/6.8996
+univar <- summarise_univar_data(univar)
+set_metrics <- c("total_deaths", "total_YLL", "cost_per_death_averted", "cost_per_YLL_averted")
+univar <- univar[which(univar$metric %in% set_metrics),]
+univar <- arrange_factor_levels(univar, type="uni")
+univar$m[univar$metric=="B) Total DALYs (x1000)"] <- univar$m[univar$metric=="B) Total DALYs (x1000)"]/1000
+univar$lci[univar$metric=="B) Total DALYs (x1000)"] <- univar$lci[univar$metric=="B) Total DALYs (x1000)"]/1000
+univar$uci[univar$metric=="B) Total DALYs (x1000)"] <- univar$uci[univar$metric=="B) Total DALYs (x1000)"]/1000
+univar$m[univar$metric=="A) Total deaths (x1000)"] <- univar$m[univar$metric=="A) Total deaths (x1000)"]/1000
+univar$lci[univar$metric=="A) Total deaths (x1000)"] <- univar$lci[univar$metric=="A) Total deaths (x1000)"]/1000
+univar$uci[univar$metric=="A) Total deaths (x1000)"] <- univar$uci[univar$metric=="A) Total deaths (x1000)"]/1000
+
+univar$variable=factor(univar$variable)
+palette <- c("firebrick2", "#E69F00", "#0072B2")
+pdf("figures and tables/univariate.pdf", width=12,height=10)
+ggplot(univar) +
+  geom_point(aes(x=m, y=variable, color=scenario)) +
+  geom_errorbarh(aes(x=m, xmin=lci, xmax=uci, y=variable, color=scenario, height=0.2)) +
+  facet_grid(scenario~metric, scales="free_x") +
+  labs(x="Metric", y="Variable") + theme(legend.position="none") +
+  theme(plot.title = element_text(size=14,face="bold",hjust = 0.5)) +
+  scale_y_discrete(limits=(levels(univar$variable)),
+                   labels=c( "Non-rabid bite incidence",expression(P["prevent"]),expression(P["infect"]),
+                            "Rabid bite incidence")) +
+  scale_x_continuous(labels=comma) +
+  theme_classic(base_size = 14) +
+  theme(legend.position = "top",
+        axis.text.x  = element_text(angle=20,size=10,hjust=1,color="black"),
+        axis.text.y  = element_text(angle=0,size=12,hjust=1,color="black"),
+        plot.margin = unit(c(1,1,1,1), "cm")) +
+  scale_colour_manual(values=palette, breaks=c("Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 4c \n Dog vax+IBCM"),
+                      labels=c("Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 4c \n Dog vax+IBCM")) +
+  scale_fill_manual(values=palette, breaks=c("Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 4c \n Dog vax+IBCM"),
+                      labels=c("Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 4c \n Dog vax+IBCM"))
+dev.off()
+```
+
+
+```{r} 
+################################
+# 5.multivariate analysis plot #
+################################
+
+undisc_global <- read.csv("output/global_stats_horizon.csv", stringsAsFactors=FALSE)
+disc_global <- read.csv("output/global_stats_horizon.csv", stringsAsFactors=FALSE)
+undisc_global[,c(8:10,29:34)] <- undisc_global[,c(8:10,29:34)]/6.8996
+disc_global[,c(8:10,29:34)] <- disc_global[,c(8:10,29:34)]/6.8996
+# Set CI limits
+lci_p = 0.05
+uci_p = 0.95
+
+undisc <- summarise_multivariate_data(undisc_global, setting="global")
+disc <- summarise_multivariate_data(disc_global, setting="global")
+
+all_palette <- c("#000000","#993399","#880000","#FF3300","#996600","339900","#FFCC33","#66CC66")
+
+undisc_metrics <- c("total_deaths", "total_YLL")
+disc_metrics <- c("cost_per_death_averted", "cost_per_YLL_averted")
+
+nodisc <- undisc[which(undisc$metric %in% undisc_metrics),]
+disc <- disc[which(disc$metric %in% disc_metrics),]
+combined <- rbind(nodisc, disc)
+combined <- arrange_factor_levels(combined, type="multi")
+combined$Gavi_group <- "China"
+combined$Gavi_group <- as.factor(combined$Gavi_group)
+combined <- arrange(transform(combined,
+Gavi_group=factor(Gavi_group, levels=c("China"))), Gavi_group)
+
+combined$m[combined$metric=="B) Total DALYs (x1000)"] <- combined$m[combined$metric=="B) Total DALYs (x1000)"]/1000
+combined$lci[combined$metric=="B) Total DALYs (x1000)"] <- combined$lci[combined$metric=="B) Total DALYs (x1000)"]/1000
+combined$uci[combined$metric=="B) Total DALYs (x1000)"] <- combined$uci[combined$metric=="B) Total DALYs (x1000)"]/1000
+combined$group_var <- 1:nrow(combined)
+
+pdf("figures and tables/multivariate.pdf", width=12, height=11)
+ggplot(data=combined, aes(x=scenario, y=m, group=group_var)) +
+  theme_classic() +
+  geom_point(aes(colour=scenario), position=position_dodge(0.3)) +
+  geom_errorbar(aes(ymin=lci, ymax=uci, colour=scenario, lty=Gavi_group, width=0.2), position=position_dodge(0.3)) +
+  facet_wrap( ~ metric, scales="free_y") +
+  labs(colour="Scenario",y="Value",x="") +
+  theme(plot.title = element_text(size=14,face="bold",hjust = 0.5)) +
+  theme(legend.title=element_blank()) + theme_classic(base_size = 18) +
+  scale_colour_manual(values=all_palette, breaks=c("1","2","3","4","5","6","7","8"),
+                      labels=c("Scenario 1 \n Status Quo", "Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 3b \n Improved PEP+Dog vax", "Scenario 4a \n IBCM", "Scenario 4b \n Improved PEP + IBCM", "Scenario 4c \n Dog vax + IBCM", "Scenario 4d \n Improved PEP + Dog vax + IBCM")) +
+  scale_linetype_manual(name="", breaks=c("China"), values=c("solid")) +
+  scale_y_continuous(labels=comma, limits=c(0,NA)) +
+  scale_x_discrete(breaks=c("1","2","3","4","5","6","7","8"),
+                   labels=c("1", "2", "3a", "3b", "4a", "4b", "4c", "4d")) +
+  theme(axis.text.x  = element_text(angle=0, hjust=1, size=14), legend.position="top")
+dev.off()
+```
+
+
+```{r} 
+######################
+# 6.projected rabies #
+######################
+
+undisc_region <- read.csv("output/region_stats.csv", stringsAsFactors=FALSE)
+chosen_regions <- c("China","Shandong","Hunan","Shaanxi","Tianjin","Guangxi","Guizhou")
+region_df <- undisc_region[which(undisc_region$region %in% chosen_regions),]
+# Create dataframe for plot
+plot_df <- projected_outcomes_plot_prep(region_df=region_df)
+plot_df <- plot_df[which(plot_df$scenario=="a1"|plot_df$scenario=="a2"|plot_df$scenario=="a3"|plot_df$scenario=="a7"),]
+
+# Transform all variables
+plot_df$adj_mean <- plot_df$mean
+plot_df$adj_lci <- plot_df$lci
+plot_df$adj_uci <- plot_df$uci
+plot_df[which(plot_df$variable!='Deaths'),]$adj_mean <- plot_df[which(plot_df$variable!='Deaths'),]$adj_mean/10000
+plot_df$adj_lci[which(plot_df$variable!='Deaths')] <- plot_df$adj_lci[which(plot_df$variable!='Deaths')]/10000
+plot_df$adj_uci[which(plot_df$variable!='Deaths')] <- plot_df$adj_uci[which(plot_df$variable!='Deaths')]/10000
+
+plot_df$text <- factor(plot_df$text,levels=c("China-Deaths","China-Persons vaccinated","China-Vaccine vials","Shandong-Deaths","Shandong-Persons vaccinated","Shandong-Vaccine vials","Hunan-Deaths","Hunan-Persons vaccinated","Hunan-Vaccine vials","Tianjin-Deaths","Tianjin-Persons vaccinated","Tianjin-Vaccine vials","Guangxi-Deaths","Guangxi-Persons vaccinated","Guangxi-Vaccine vials","Shaanxi-Deaths","Shaanxi-Persons vaccinated","Shaanxi-Vaccine vials","Guizhou-Deaths","Guizhou-Persons vaccinated","Guizhou-Vaccine vials"))
+# Set the palette colours
+palette <- c("#CCCCCC","#FF3366", "#66CCFF", "#880000", "#66DD00", "#00FFFF","#66CC66","#7700FF")
+palette_1 <- c("#000000","#FF3300","#0000FF","#880000","#996600","339900","#66CC66","#FFCC33")
+
+facet_labels_1 <- c(`China-Deaths`=" ", `China-Persons vaccinated`=" ",`China-Vaccine vials`="China (Overall)",
+                  `Tianjin-Deaths`=" ", `Tianjin-Persons vaccinated`=" ",`Tianjin-Vaccine vials`="Tianjin (North China)",
+                  `Shaanxi-Deaths`=" ", `Shaanxi-Persons vaccinated`=" ",`Shaanxi-Vaccine vials`="Shaanxi (Northwest China)",
+                  `Shandong-Deaths`=" ", `Shandong-Persons vaccinated`=" ",`Shandong-Vaccine vials`="Shandong (East China)",
+                  `Guangxi-Deaths`=" ", `Guangxi-Persons vaccinated`=" ",`Guangxi-Vaccine vials`="Guangxi (South China)",
+                  `Hunan-Deaths`=" ", `Hunan-Persons vaccinated`=" ",`Hunan-Vaccine vials`="Hunan (Central China)",
+                  `Guizhou-Deaths`=" ", `Guizhou-Persons vaccinated`=" ",`Guizhou-Vaccine vials`="Guizhou (Southwest China)")
+
+facet_labels_2 <- c(`China-Deaths`="Deaths", `China-Persons vaccinated`="People vaccinated",`China-Vaccine vials`="Vaccine vials",
+                  `Tianjin-Deaths`=" ", `Tianjin-Persons vaccinated`="",`Tianjin-Vaccine vials`=" ",
+                  `Shaanxi-Deaths`=" ", `Shaanxi-Persons vaccinated`="",`Shaanxi-Vaccine vials`=" ",
+                  `Shandong-Deaths`=" ", `Shandong-Persons vaccinated`="",`Shandong-Vaccine vials`=" ",
+                  `Guangxi-Deaths`=" ", `Guangxi-Persons vaccinated`="",`Guangxi-Vaccine vials`=" ",
+                  `Hunan-Deaths`=" ", `Hunan-Persons vaccinated`="",`Hunan-Vaccine vials`=" ",
+                  `Guizhou-Deaths`=" ", `Guizhou-Persons vaccinated`="",`Guizhou-Vaccine vials`=" ")
+pdf("figures and tables/Fig2_deaths_vaccinated_vials.pdf", width=10, height=15.5)
+ggplot(data=plot_df) + geom_line(aes(x=year, y=adj_mean, col=scenario), lwd=0.3) +
+   geom_vline(xintercept = c(2025,2030,2035), col="gray70",linetype="dashed",size=0.3) +
+  facet_wrap(~text, ncol=3, scales="free",strip.position ="right", labeller = as_labeller(facet_labels_1)) +
+  labs(title = "",subtitle="A.Deaths                                                    B.Persons vaccinated (x10 000)                  C.Vaccine vials (x10 000)")+
+  theme_bw(base_size = 12) +
+  theme(panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        legend.title=element_blank(),
+        legend.position=c(0.5,1.03),
+        legend.direction = "horizontal",
+        strip.background = element_blank(),
+        strip.text = element_text(size=10),
+        plot.margin = unit(c(1,0.5,0.5,0.5), "cm")) +
+  labs(y="Values", x="Year") +
+  theme(axis.line = element_line(colour="black",lineend=0.3,size=0.3),axis.ticks.length=unit(-0.1, "cm"))+
+  scale_x_continuous(breaks = seq(2025,2035,5))+
+  scale_y_continuous(limits = c(0,NA)) +
+  geom_ribbon(aes(x=year, ymin=adj_lci, ymax=adj_uci, fill=scenario), alpha=0.20) +
+    scale_colour_manual(values=palette_1,breaks=c("a1","a2","a3","a4","a5","a6","a7","a8"),                    labels=c("Scenario 1 \n Status Quo", "Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 3b \n Improved PEP+Dog vax", "Scenario 4a \n IBCM", "Scenario 4b \n Improved PEP + IBCM", "Scenario 4c \n Dog vax + IBCM", "Scenario 4d \n Improved PEP + Dog vax + IBCM")) +
+  scale_fill_manual(values=palette, breaks=c("a1","a2","a3","a4","a5","a6","a7","a8"),
+                    labels=c("Scenario 1 \n Status Quo", "Scenario 2 \n Improved PEP", "Scenario 3a \n Dog vax", "Scenario 3b \n Improved PEP+Dog vax", "Scenario 4a \n IBCM", "Scenario 4b \n Improved PEP + IBCM", "Scenario 4c \n Dog vax + IBCM", "Scenario 4d \n Improved PEP + Dog vax + IBCM"))
+dev.off()
+```
+
+
+```{r} 
+##################
+#     7.ICER     #
+##################
+
+ICER_global_df <- read.csv("output/region_stats_horizon.csv", stringsAsFactors=FALSE)
+ICER_global_df[,c(9:11,30:35)] <- ICER_global_df[,c(9:11,30:35)]/6.8996
+ICER_global_df <- scenario_prep(ICER_global_df)
+# SCenario 4b vs Scenario 4a
+SC <- stacked_incremental_cost_analysis_province(ICER_global_df,  scenario_1="1",scenario_2="3",scenario_3="7")
+SC$Level[which(SC$Level=="Shaanxi")]="Shaanxi"
+colnames(SC) <- c("Region","deaths_diff","cost_diff","ICER_deaths","Scenario")
+# Change cost to be in millions
+SC$cost_diff <- SC$cost_diff/1000000
+SC$deaths_diff <- -SC$deaths_diff
+SC <- SC[-which(SC$Region=="China"),]
+min(SC$cost_diff); max(SC$cost_diff)
+yaxis=600
+min(SC$deaths_diff); max(SC$deaths_diff)
+xaxis=200
+pdf("figures and tables/Fig3_ICER_province.pdf", width=10, height=5)
+ggplot(data=SC, aes(x=deaths_diff, y=cost_diff)) +
+  geom_vline(xintercept = 0, col="gray70") + geom_hline(yintercept = 0, col="gray70") +
+  geom_point(aes(col=Region, shape=Scenario), size=3) +
+  theme_classic() +
+  scale_x_continuous(labels=comma, limits=c(-200, 200),
+                  breaks=c(-200,-100,0,100,200)) +
+  scale_y_continuous(limits=c(-600, 600),
+                     breaks=c(-600,-400,-200,0,200,400,600))+
+  labs(x="Deaths averted in number", y="Difference in cost (US dollars in millions)") +
+    scale_shape_manual(values=c(16,17), breaks=c("1 vs. 3", "1 vs. 7"),
+                      labels=c(
+                              "\n (1) Status Quo vs. \n (3a) Dog vax \n",
+                              "\n (1) Status Quo vs. \n (4c) Dog vax + IBCM \n"))+
+    scale_colour_manual(values=c(3,1,2,4,5,6), breaks=c("Guangxi","Guizhou","Hunan","Shandong","Shaanxi","Tianjin"),
+                      labels=c("Guangxi (South China)","Guizhou (Southwest China)","Hunan (Central China)","Shandong (East China)","Shaanxi (Northwest China)","Tianjin (North China)"))+
+  theme(axis.title = element_text(size=14),
+        axis.text = element_text(size=12),
+        legend.title = element_text(size=14),
+        legend.text = element_text(size=12)
+        )
+dev.off()
+```
+

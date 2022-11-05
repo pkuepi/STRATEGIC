@@ -1,0 +1,191 @@
+---
+title: "STRATEGIC"
+output: html_document
+---
+
+#################################################################
+#                                                               #
+#  Strategies to inTerrupt RAbies Transmission for the          #
+#  Elimination Goal by 2030 In China (STRATEGIC) study          #
+#                                                               #        
+#  analysis                                                     #
+#  This file is used for the main analyses                      #
+#  Modified from the WHO rabies modelling consortium study      #
+#  URL: https://github.com/katiehampson1978/rabies_PEP_access   #
+#  Ref.: The Lancet Infectious Diseases 2019; 19(1): 102-11.    #
+#                                                               #
+#################################################################
+
+
+```{r}
+#1-1.set file sources
+rm(list=ls())
+setwd("Path/STRATEGIC")
+source("R/1.rabies probability calculation.R")
+source("R/2.medical care probability calculation.R")
+source("R/3.DALYs calculation.R")
+source("R/4.time of strategy.R")
+source("R/5.univariate analysis.R")
+source("R/6.multivariate analysis.R")
+source("R/7.results summary.R")
+```
+
+
+```{r}
+library(triangle)
+library(dplyr)
+```
+
+
+```{r}
+#1-2.parameters from files
+DALYrabies_input <- read.csv("data/DALY.csv")
+LE2022 <- read.csv("data/lifetable.csv")$value
+data <- read.csv("data/data.csv")
+dogs <- read.csv(file="data/dogs_pop_traj.csv", stringsAsFactors = FALSE)
+elimination_traj <- read.csv(file="data/rabies_traj.csv")
+rabies <- read.csv("data/baseline_incidence.csv")
+params <- read.csv("data/bio_data.csv")
+vacc <- read.csv("data/vaccine_use.csv")
+
+#1-3.parameters by settings
+hrz=length(2023:2035)
+discount=0.03
+n=1000
+```
+
+
+```{r}
+#2.probabilistic sensitivity analyses (PSA)
+# 1)SQ - status quo
+set.seed(1)
+scenario_a1 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="none", DogVax_TF=F, VaxRegimen="Updated TRC",
+                                     DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=FALSE)
+
+# 2)improved PEP
+set.seed(1)
+scenario_a2 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="base", DogVax_TF=F, VaxRegimen="Updated TRC",
+                                     DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=FALSE)
+
+# 3a)improved Dog Vax
+set.seed(1)
+scenario_a3 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="none", DogVax_TF=T, VaxRegimen="Updated TRC",
+                                       DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=FALSE)
+
+# 3b)improved PEP plus  Dog Vax
+set.seed(1)
+scenario_a4 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="base", DogVax_TF=T, VaxRegimen="Updated TRC",
+                                       DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=FALSE)
+
+# 4a)IBCM
+set.seed(1)
+scenario_a5 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="none", DogVax_TF=F, VaxRegimen="Updated TRC",
+                                       DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=TRUE)
+
+# 4b)Improved PEP plus IBCM
+set.seed(1)
+scenario_a6 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="base", DogVax_TF=F, VaxRegimen="Updated TRC",
+                                     DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=TRUE)
+
+# 4c)Improved Dog vax plus IBCM
+set.seed(1)
+scenario_a7 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="none", DogVax_TF=T, VaxRegimen="Updated TRC",
+                                       DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=TRUE)
+
+# 4d)Improved PEP plus Dog Vax plus IBCM
+set.seed(1)
+scenario_a8 <- multivariate_analysis(ndraw=n, horizon=hrz, GAVI_status="base", DogVax_TF=T, VaxRegimen="Updated TRC",
+                                       DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=TRUE)
+
+#result summary#
+out <- rbind.data.frame(
+  cbind.data.frame(scenario_a1, scenario="a1"),
+  cbind.data.frame(scenario_a2, scenario="a2"),
+  cbind.data.frame(scenario_a3, scenario="a3"),
+  cbind.data.frame(scenario_a4, scenario="a4"),
+  cbind.data.frame(scenario_a5, scenario="a5"),
+  cbind.data.frame(scenario_a6, scenario="a6"),
+  cbind.data.frame(scenario_a7, scenario="a7"),
+  cbind.data.frame(scenario_a8, scenario="a8"))
+regions <- unique(out$region)
+scenarios <- unique(out$scenario)
+yrs <- unique(out$year)
+gavi_info <- read.csv("data/data.csv", stringsAsFactors=FALSE)
+out <- merge(out, data.frame(region=gavi_info$region), by="region", all.x=TRUE)
+
+out$cost_per_death_averted <-  out$total_cost/out$total_deaths_averted
+out$cost_per_YLL_averted <-  out$total_cost/out$total_YLL_averted
+out$deaths_averted_per_100k_vaccinated <-  out$total_deaths_averted/out$vaccinated/100000
+
+# Create summary outputs per year
+out_horizon = region_horizon_iter(out)
+region_summary_yr = multivar_region_summary(out, year = TRUE)
+global_summary_yr = multivar_summary(region_summary_yr[which(region_summary_yr$region=="China"),], year=TRUE, setting="global")
+folder_name=""
+write.csv(region_summary_yr, paste("output/", folder_name, "/region_stats.csv", sep=""), row.names=FALSE)
+write.csv(global_summary_yr, paste("output/", folder_name, "/global_stats.csv", sep=""), row.names=FALSE)
+
+# Create summary outputs over time horizon
+region_summary_horizon = multivar_region_summary(out_horizon, year = FALSE)
+global_summary_horizon = multivar_summary(region_summary_horizon[which(region_summary_horizon$region=="China"),], year=FALSE, setting="global")
+
+write.csv(region_summary_horizon, paste("output/", folder_name, "/region_stats_horizon.csv", sep=""), row.names=FALSE)
+write.csv(global_summary_horizon, paste("output/", folder_name, "/global_stats_horizon.csv", sep=""), row.names=FALSE)
+```
+
+
+```{r}
+#3.one-way sensitivity analyses
+n=1000
+set.seed(1)
+# 2)Improved PEP
+scenario_a2 <- univariate_analysis(ndraw=n, horizon=hrz, GAVI_status="base", DogVax_TF=F, VaxRegimen="Updated TRC",
+                                     DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=FALSE)
+
+# 3b)Improved PEP plus Dog Vax
+set.seed(1)
+scenario_a3 <- univariate_analysis(ndraw=n, horizon=hrz, GAVI_status="none", DogVax_TF=T, VaxRegimen="Updated TRC",
+                                     DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=FALSE)
+
+# 4d)Improved PEP plus Dog Vax plus IBCM
+set.seed(1)
+scenario_a7 <- univariate_analysis(ndraw=n, horizon=hrz, GAVI_status="none", DogVax_TF=T, VaxRegimen="Updated TRC",
+                                     DALYrabies=DALYrabies_input, LE=LE2022, RIG_status="high risk", discount=discount, breaks="5yr", IBCM=TRUE)
+
+#result summary#
+out <- rbind.data.frame(
+  cbind.data.frame(scenario_a2, scenario="a2"),
+  cbind.data.frame(scenario_a3, scenario="a3"),
+  cbind.data.frame(scenario_a7, scenario="a7"))
+dim(out)
+table(out$scenario)
+
+regions <- unique(out$region)
+scenarios <- unique(out$scenario)
+yrs <- unique(out$year)
+
+gavi_info <- read.csv("data/data.csv", stringsAsFactors=FALSE)
+out <- merge(out, data.frame(region=gavi_info$region, cluster=gavi_info$cluster), by="region", all.x=TRUE)
+
+out$cost_per_death_averted <-  out$total_cost/out$total_deaths_averted
+out$cost_per_YLL_averted <-  out$total_cost/out$total_YLL_averted
+out$deaths_averted_per_100k_vaccinated <-  out$total_deaths_averted/out$vaccinated/100000
+
+# Create summary outputs per year
+out_horizon = region_horizon_iter_univar(out)
+out_horizon$iter_order <- rank(out_horizon$total_deaths)
+mean(out_horizon$total_deaths)
+folder_name=""
+region_summary_yr = univar_region_summary(out, year = TRUE)
+global_summary_yr = univar_summary(region_summary_yr[which(region_summary_yr$region=="China"),], year=TRUE, setting="global")
+
+write.csv(region_summary_yr, paste("output/", folder_name, "/un_region_stats.csv", sep=""), row.names=FALSE)
+write.csv(global_summary_yr, paste("output/", folder_name, "/un_global_stats.csv", sep=""), row.names=FALSE)
+
+# Create summary outputs over time horizon
+region_summary_horizon = univar_region_summary(out_horizon, year = FALSE)
+global_summary_horizon = univar_summary(region_summary_horizon[which(region_summary_horizon$region=="China"),], year=FALSE, setting="global")
+
+write.csv(region_summary_horizon, paste("output/", folder_name, "/un_region_stats_horizon.csv", sep=""), row.names=FALSE)
+write.csv(global_summary_horizon, paste("output/", folder_name, "/un_global_stats_horizon.csv", sep=""), row.names=FALSE)
+```
