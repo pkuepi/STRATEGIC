@@ -56,7 +56,7 @@ You may need to install the following R packages if you have not done so yet:
 - dplyr
 - tools
 - ggplot2
-- sacles
+- scales
 
 And then you can run the second chunk to load the packages.
 
