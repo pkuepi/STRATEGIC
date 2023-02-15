@@ -1,0 +1,3 @@
+Scenario,throughput,patients_per_month,Setting,regimen,completeness,vial,nvisit,RIG_wt,RIG_wound
+1,Med,,all,Updated TRC,Complete,4,4,,
+2,Med,,all,Updated TRC,Incomplete,2,2,,
