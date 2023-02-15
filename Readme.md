@@ -42,7 +42,10 @@ Please run the fourth chunk to complete the simulation of PSA (multivariate anal
 
 Please run the fifth chunk to complete the simulation of univariate analysis.
 
-### 2.Tables and figures generation
+### 2.Results prepare
+The `Results prepare`.Rmd file is set to summarize the results from 2024-2035. The results will be saved in `output` folder.
+
+### 3.Tables and figures generation
 The `plot` .Rmd file is set to summarize the results of `analysis`. Tables and figures are saved at the `figures and tables` folder. If you want to run the codes, you need to: 
 
 #### 1) Change the path
@@ -70,7 +73,7 @@ Please run the sixth to ninth chunk to generate the figures of the predicted hum
 
 ## If you are not interested in the details of this code, you can skip the following descriptions.
 
-### 3.Descriptions of folders
+### 4.Descriptions of folders
 
 #### Folder `R`
 This folder contains major R functions used for our model fitting, parameter estimation and producing tables and figures. 
@@ -101,7 +104,7 @@ This folder contains the main data used in the study.
 
 #### Folder `output `
 
-This folder stores the results of `analysis.Rmd`. 
+This folder stores the results of `analysis.Rmd` and `Results prepare.Rmd`. 
 
 #### Folder `figures and tables `
 
@@ -112,3 +115,25 @@ This folder stores the files for main tables and figures.
 - `Fig2_deaths_vaccinated_vials.pdf`: This file presented Figure 2 in the manuscript.  
 - `Fig3_ICER_province.pdf`: This file presented Figure 3 in the manuscript.  
 - `ICER_scenario.csv`,`multivariate.pdf`,`univariate.pdf` presented results in the supplementary files.
+
+## (Update in Feb, 2023)
+
+#### Folder `additional analyses`
+
+This folder stores the data, code and results for the additional analysis. The code structure is basically the same as that of the main analysis.
+
+- Folder`dog vial price`: This folder includes the cost constriant analysis of dog vial price, to find when the ICER of scenario 4c to be dominant, 1 time GDP per capita and 3 times GDP per capita. 
+	- Folder `data` contains the main data used in the study, same as the main analysis.
+	- Folder `R` contains major R functions, same as the main analysis. We only replace the parameter `dog_vial_price` from a constant to a variable in the file `6.multivariate analysis.R`, for the corresponding cost constriant analysis. 
+	- File `analysis.Rmd` is set to do the analysis of cost constriant analysis.
+		- 1) Change the path
+			- Please change the `path` to the location of the `STRATEGIC` folder you downloaded and run the first chunk to load the R function.
+		- 2) Prepare R packages
+			- You may need to install the following R packages if you have not done so yet:
+				- triangle
+				- dplyr
+			- And then you can run the second chunk to load the packages.
+		- 3) Load the data
+			- Please run the third chunk to load the data needed for the analysis.
+		- 4) Cost constriant analyses
+			- Please run the fourth chunk to complete the cost constriant analyses. The result will show below the chunk.

@@ -253,9 +253,10 @@ decision_tree_draw<-function(region, horizon, GAVI_status, DogVax_TF, VaxRegimen
   
   
   if(DogVax_TF==T){
-    cost_dog_per_year = 15*6.8996*0.7*dogpop[1:horizon] * exp(-discount*future)
-  }else{
-    cost_dog_per_year = 15*6.8996*0.4*dogpop[1:horizon] * exp(-discount*future)
+    cost_dog_per_year = c(11.33*6.8996*0.4*dogpop[1] * exp(-discount*future[1]),
+                          11.33*6.8996*0.7*dogpop[2:horizon] * exp(-discount*future[2:horizon]))
+    }else{
+    cost_dog_per_year = 11.33*6.8996*0.4*dogpop[1:horizon] * exp(-discount*future)
   }
   if(IBCM == F){
     cost_IBCM=rep(0,horizon)
